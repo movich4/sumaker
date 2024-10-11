@@ -23,3 +23,15 @@ float constrain_float(float x, float a, float b) {
     if (x > b) return b;
     return x;
 }
+
+
+// Implementación de la función bitWrite para STM32
+void bitWrite(uint32_t *variable, uint8_t bit, uint8_t value) {
+    if (value) {
+        // Poner el bit a 1 usando OR
+        *variable |= (1 << bit);
+    } else {
+        // Poner el bit a 0 usando AND con la negación de la máscara
+        *variable &= ~(1 << bit);
+    }
+}

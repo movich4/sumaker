@@ -12,7 +12,7 @@
 #define MOTOR_DER TIM_CHANNEL_2
 #define MOTOR_IZQ TIM_CHANNEL_1
 
-// Define las constantes pulsos de timer para optener 125us, 132.5us y 250us para OneShot125
+// Define los rangos para optener 125us, 132.5us y 250us para OneShot125
 #define MAX_PWM 27000
 #define NEUTRAL_PWM 20250
 #define MIN_PWM 13500
@@ -50,8 +50,8 @@ void parar_motores(){
 
 //rutina que genera un retardo en us
 void delay_us(uint32_t us) {
-    __HAL_TIM_SET_COUNTER(&htim2, 0);  // Reiniciar el contador a 0
-    while (__HAL_TIM_GET_COUNTER(&htim2) < us);  // Esperar hasta que el contador llegue a los micros pasados como argumento
+    uint32_t limite = __HAL_TIM_GET_COUNTER(&htim2) + us;  //Inicializamos limite con el valor del timer 2 + los micros pasados como argumento
+    while (__HAL_TIM_GET_COUNTER(&htim2) < limite);  // Esperar hasta que el contador llegue al limite
 }
 
 //	Funcion que devuelve la velocidad que hay que aplicar al motor del lado hacia donde se pretende girar teniendo en cuenta
@@ -72,7 +72,13 @@ int calcular_velocidad_motor(int distancia, int velocidad_actual) {
 
 	velocidad_calculada = constrain(velocidad_calculada, VELOCIDAD_MINIMA, velocidad_actual);
 
-	//if(velocidad_calculada < 150)velocidad_calculada = 0;
 
     return velocidad_calculada;
+}
+
+void parar_suave(int velocidad_actual){
+	for(int i= velocidad_actual; i > 0; i--){
+		mover_motores(i, i);
+		delay_us(500);
+	}
 }

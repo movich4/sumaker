@@ -7,6 +7,7 @@
 
 #ifndef INC_TIPOS_H_
 #define INC_TIPOS_H_
+#include "stdint.h"
 
 // Definición de tipo booleano
 typedef uint8_t bool;

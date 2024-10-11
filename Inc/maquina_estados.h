@@ -20,6 +20,7 @@ typedef enum {
 	ATACANDO_BANDERITAS,
     EVADIENDO,
     DEFENSIVO,
+	ESTRATEGIA_MARCHA_ATRAS,
 	TEST
 } estado_robot_t;
 

@@ -25,6 +25,7 @@
 #include "maquina_estados.h"
 #include "motor_control.h"
 #include "pulsador.h"
+#include "infrarrojos.h"
 
 /* USER CODE END Includes */
 
@@ -36,7 +37,7 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 #define NUM_CONVERSIONES_ADC 16
-#define BUFFER_SIZE 20 // Tamaño del buffer para la media móvil
+#define BUFFER_SIZE 5 // Tamaño del buffer para la media móvil
 
 /* USER CODE END PD */
 
@@ -195,6 +196,7 @@ int main(void)
 
 	while (1) {
 		ejecutar_maquina_estados();
+
 
     /* USER CODE END WHILE */
 
@@ -572,7 +574,7 @@ static void MX_TIM5_Init(void)
   htim5.Instance = TIM5;
   htim5.Init.Prescaler = 108-1;
   htim5.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim5.Init.Period = 100000-1;
+  htim5.Init.Period = 400000-1;
   htim5.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim5.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim5) != HAL_OK)
@@ -686,8 +688,14 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(START_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : START_IR_Pin SENSOR5_Pin SENSOR2_Pin SENSOR1_Pin */
-  GPIO_InitStruct.Pin = START_IR_Pin|SENSOR5_Pin|SENSOR2_Pin|SENSOR1_Pin;
+  /*Configure GPIO pin : STOP_IR_Pin */
+  GPIO_InitStruct.Pin = STOP_IR_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(STOP_IR_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : SENSOR5_Pin SENSOR2_Pin SENSOR1_Pin */
+  GPIO_InitStruct.Pin = SENSOR5_Pin|SENSOR2_Pin|SENSOR1_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
@@ -700,19 +708,19 @@ static void MX_GPIO_Init(void)
 
   /*Configure GPIO pin : FINAL_D_Pin */
   GPIO_InitStruct.Pin = FINAL_D_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(FINAL_D_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : INCL_1_Pin INCL_2_Pin */
-  GPIO_InitStruct.Pin = INCL_1_Pin|INCL_2_Pin;
+  /*Configure GPIO pin : INCL_1_Pin */
+  GPIO_InitStruct.Pin = INCL_1_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
   GPIO_InitStruct.Pull = GPIO_PULLUP;
-  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+  HAL_GPIO_Init(INCL_1_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : FINAL_I_Pin */
   GPIO_InitStruct.Pin = FINAL_I_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(FINAL_I_GPIO_Port, &GPIO_InitStruct);
 
@@ -727,6 +735,9 @@ static void MX_GPIO_Init(void)
   /* EXTI interrupt init*/
   HAL_NVIC_SetPriority(EXTI3_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(EXTI3_IRQn);
+
+  HAL_NVIC_SetPriority(EXTI9_5_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
 
   HAL_NVIC_SetPriority(EXTI15_10_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);

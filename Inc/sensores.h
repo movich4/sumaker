@@ -32,7 +32,6 @@ GPIO_PinState leer_sensor_lateral_izquierdo(void);
 GPIO_PinState leer_sensor_borde_derecho(void);
 GPIO_PinState leer_sensor_borde_izquierdo(void);
 GPIO_PinState leer_sensor_inclinacion_izquierdo(void);
-GPIO_PinState leer_sensor_inclinacion_derecho(void);
 int calcular_distancia_normalizada(uint16_t lectura_sensor);
 
 

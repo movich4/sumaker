@@ -14,13 +14,18 @@
 #include "tipos.h"
 #include "utiles.h"
 #include "stdio.h"
+#include "infrarrojos.h"
 
 #define DEBUG 1
 
-const int16_t VELOCIDAD_MAXIMA = 1000; // Velocidad máxima permitida (0-1000)
-const int16_t INCREMENTO_VELOCIDAD = 3; // Incremento de velocidad en cada ciclo
-const int16_t VELOCIDAD_MINIMA_MOTOR = 0; // Velocidad mínima
-const uint32_t INTERVALO_ACTUALIZACION = 1; // Intervalo de actualización en ms
+const int16_t VELOCIDAD_MAXIMA = 1000; 			// Velocidad máxima permitida para los motores (0-1000)
+const int16_t VELOCIDAD_MINIMA_MOTOR = 0; 		// Velocidad mínima
+const int16_t INCREMENTO_VELOCIDAD = 3; 		// Incremento de velocidad en cada ciclo
+const uint32_t INTERVALO_ACTUALIZACION = 1; 	// Intervalo de actualización en ms
+
+int frontal_derecho = 1100;
+int frontal_izquierdo = 1100;
+
 uint32_t ultima_actualizacion = 0;
 estado_robot_t estado_actual = ESPERANDO_INICIO;
 int16_t velocidad_actual = 0;
@@ -32,8 +37,13 @@ int tiempo_atacando = 0;
 
 // Función principal de la máquina de estados
 void ejecutar_maquina_estados() {
-	int frontal_derecho = 1100;
-	int frontal_izquierdo = 1100;
+
+	if(parar_recibido()){
+		parar_suave(velocidad_actual);
+		while(1){
+			parpadear_led(5);
+		}
+	}
     switch (estado_actual) {
         case ESPERANDO_INICIO:
         	frontal_derecho = leer_sensor_frontal_derecho();
@@ -52,13 +62,18 @@ void ejecutar_maquina_estados() {
                 else if(orientacion == ESPALDAS) estado_actual = ATACANDO_ESPALDA;
             	printf("estado actual: %d\n\r", estado_actual);
             	while(pulsador_presionado()){ 	//Esperar a que se suelte el pulsador
-
             	}
                 iniciar_cuenta_atras(); 		//Retardo de 5 segundos que se muestran con parpadeos led
             }
             break;
 
         case BUSCANDO_OPONENTE:
+        	if(parar_recibido()){
+				parar_motores();
+				while(1){
+					parpadear_led(5);
+				}
+			}
         	frontal_derecho = leer_sensor_frontal_derecho();
         	frontal_izquierdo = leer_sensor_frontal_izquierdo();
         	if(DEBUG)printf("%s %d %d \n\r", "BUSCANDO_OPONENTE", frontal_izquierdo, frontal_derecho);
@@ -75,6 +90,12 @@ void ejecutar_maquina_estados() {
         			if(estado_actual != BUSCANDO_OPONENTE){ //Si se detecta una situación critica por interrupcion dejamos de girar
         				break; //y pasamos a un estado de EVADIENDO o DEFENSIVO
         			}
+        			if(parar_recibido()){
+						parar_motores();
+						while(1){
+							parpadear_led(5);
+						}
+					}
         		}
         		parar_motores();
         	}
@@ -92,17 +113,18 @@ void ejecutar_maquina_estados() {
 				inicio_contador = (int)tiempo_actual;
 				ataque_iniciado = true;
 			}
+
 			if (tiempo_actual - ultima_actualizacion >= INTERVALO_ACTUALIZACION) {
 				ultima_actualizacion = tiempo_actual;
 
 				// Verificar si los sensores detectan al oponente
 				bool oponente_detectado_derecha = false;
 				bool oponente_detectado_izquierda = false;
-				if(frontal_derecho <= UMBRAL_PRESENCIA)oponente_detectado_derecha = 1;
-				if(frontal_izquierdo <= UMBRAL_PRESENCIA)oponente_detectado_izquierda = 1;
+				if(frontal_derecho <= UMBRAL_PRESENCIA)oponente_detectado_derecha = true;
+				if(frontal_izquierdo <= UMBRAL_PRESENCIA)oponente_detectado_izquierda = true;
 
 				tiempo_atacando = tiempo_actual - inicio_contador;
-				if(tiempo_atacando < 1000){
+				if(tiempo_atacando < 30000){
 					// Aumentar la velocidad progresivamente hasta la velocidad máxima
 					if (velocidad_actual < VELOCIDAD_MAXIMA) {
 						velocidad_actual += INCREMENTO_VELOCIDAD;
@@ -110,14 +132,14 @@ void ejecutar_maquina_estados() {
 					}
 				}
 
-				else if(tiempo_atacando >= 1000){
-					velocidad_actual -= 10;
+				else if(tiempo_atacando >= 30000){
+					velocidad_actual -= 30;
 					if (velocidad_actual < 300) velocidad_actual = 300;
 				}
 
-				//Establecemos una velocidad mínima para no tener que realizar 100 bucles x 1ms antes no se empieza
-				//a mover el motor
-				if(velocidad_actual < 400)velocidad_actual = 400;
+
+				//Establecemos una velocidad mínima de ataque
+				if(velocidad_actual < 350)velocidad_actual = 350;
 
 				int16_t velocidad_izquierda = velocidad_actual;
 				int16_t velocidad_derecha = velocidad_actual;
@@ -157,28 +179,28 @@ void ejecutar_maquina_estados() {
 
             break;
 
-        case ATACANDO_DERECHA:
+         case ATACANDO_DERECHA:
         	if(DEBUG)printf("%s\n\r", "ATACANDO_DERECHA");
-        	mover_motores(300, -300);
-        	velocidad_actual = 300;
+        	mover_motores(250, -250);
+        	velocidad_actual = 250;
 			while(leer_sensor_frontal_derecho() > UMBRAL_PRESENCIA){
 				if(estado_actual != ATACANDO_DERECHA){ //Si se detecta una situación critica por interrupcion dejamos de girar
 					break; //y pasamos a un estado de EVADIENDO o DEFENSIVO
 				}
 			}
-			//parar_motores();
+			parar_motores();
 			estado_actual = ATACANDO;
         	break;
 
         case ATACANDO_IZQUIERDA:
         	if(DEBUG)printf("%s\n\r", "ATACANDO_IZQUIERDA");
-        	mover_motores(800, -500);
-			velocidad_actual = 500;
+        	mover_motores(-250, 250);
 			while(leer_sensor_frontal_izquierdo() > UMBRAL_PRESENCIA){
-				if(estado_actual != ATACANDO_DERECHA){ //Si se detecta una situación critica por interrupcion dejamos de girar
+				if(estado_actual != ATACANDO_IZQUIERDA){ //Si se detecta una situación critica por interrupcion dejamos de girar
 					break; //y pasamos a un estado de EVADIENDO o DEFENSIVO
 				}
 			}
+			parar_motores();
 			estado_actual = ATACANDO;
         	break;
 
@@ -194,42 +216,42 @@ void ejecutar_maquina_estados() {
 
         case EVADIENDO:
         	parar_motores();
+        	HAL_Delay(100);
+        	mover_motores(-200, -200);
+        	HAL_Delay(300);
+        	parar_motores();
         	tiempo_atacando = HAL_GetTick() - inicio_contador;
         	ataque_iniciado = false;
         	if(DEBUG)printf("%s\n\r", "EVADIENDO");
 			if(primer_borde_detectado == BORDE_DERECHO){
 				printf("%s\n\r", "borde derecho detectado");
-
 			}
 			else printf("%s\n\r", "borde izquierdo detectado");
-			while(1);
-        	//printf("Tiempo atacando: %d\n\r", tiempo_atacando);
-
+        	printf("Tiempo atacando: %d\n\r", tiempo_atacando);
         	primer_borde_detectado = 0;
-        	//while(1);
-//        	HAL_Delay(100);
-//        	mover_motores(-200, -200);
-//        	HAL_Delay(1000);
-//        	velocidad_actual = 0;
-//        	primer_borde_detectado = 0;
-//        	estado_actual = BUSCANDO_OPONENTE;
-
+        	estado_actual = ATACANDO;
 
             break;
 
         case DEFENSIVO:
         	if(DEBUG)printf("%s\n\r", "DEFENSIVO");
-        	parpadear_led(2);
-//        	parar_motores();
-//        	while(1){
-//        		parpadear_led(2);
-//        		if(pulsador_presionado()){
-//        			estado_actual = BUSCANDO_OPONENTE;
-//        			break;
-//        		}
-//        	}
+        	if(velocidad_actual > 950){
+        		parar_motores();
+				//parar_suave(velocidad_actual);
+				for(int i = -100; i > -1000; i--){
+					mover_motores(i, -150);
+					delay_us(500);
+				}
+				HAL_Delay(150);
+				estado_actual = ATACANDO;
+
+        	}
 
             break;
+
+        case ESTRATEGIA_MARCHA_ATRAS:
+
+        	break;
 
         case TEST:
 
